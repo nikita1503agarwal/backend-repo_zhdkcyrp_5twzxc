@@ -1,48 +1,38 @@
 """
-Database Schemas
+Database Schemas for Grocery Shop App
 
-Define your MongoDB collection schemas here using Pydantic models.
-These schemas are used for data validation in your application.
-
-Each Pydantic model represents a collection in your database.
-Model name is converted to lowercase for the collection name:
-- User -> "user" collection
-- Product -> "product" collection
-- BlogPost -> "blogs" collection
+Each Pydantic model maps to a MongoDB collection (lowercase of class name).
+Use these for validation and consistent data handling.
 """
 
 from pydantic import BaseModel, Field
-from typing import Optional
-
-# Example schemas (replace with your own):
-
-class User(BaseModel):
-    """
-    Users collection schema
-    Collection name: "user" (lowercase of class name)
-    """
-    name: str = Field(..., description="Full name")
-    email: str = Field(..., description="Email address")
-    address: str = Field(..., description="Address")
-    age: Optional[int] = Field(None, ge=0, le=120, description="Age in years")
-    is_active: bool = Field(True, description="Whether user is active")
+from typing import Optional, List
 
 class Product(BaseModel):
-    """
-    Products collection schema
-    Collection name: "product" (lowercase of class name)
-    """
-    title: str = Field(..., description="Product title")
-    description: Optional[str] = Field(None, description="Product description")
-    price: float = Field(..., ge=0, description="Price in dollars")
-    category: str = Field(..., description="Product category")
-    in_stock: bool = Field(True, description="Whether product is in stock")
+    """Grocery products available to order"""
+    name: str = Field(..., description="Product name")
+    price: float = Field(..., ge=0, description="Unit price")
+    unit: str = Field(..., description="Unit label e.g. 'kg', 'each'")
+    stock: int = Field(100, ge=0, description="Available stock units")
+    image: Optional[str] = Field(None, description="Image URL")
+    category: Optional[str] = Field(None, description="Category e.g. Produce, Dairy")
+    in_stock: bool = Field(True, description="Whether product is available for ordering")
 
-# Add your own schemas here:
-# --------------------------------------------------
+class Slot(BaseModel):
+    """Pickup time slot with limited capacity to reduce in-store crowding"""
+    label: str = Field(..., description="Human readable label e.g. 'Today 4:00–4:30 PM'")
+    capacity: int = Field(..., ge=1, description="Max number of orders allowed in this slot")
+    booked: int = Field(0, ge=0, description="Number of orders already booked")
 
-# Note: The Flames database viewer will automatically:
-# 1. Read these schemas from GET /schema endpoint
-# 2. Use them for document validation when creating/editing
-# 3. Handle all database operations (CRUD) directly
-# 4. You don't need to create any database endpoints!
+class OrderItem(BaseModel):
+    product_id: str = Field(..., description="Product ObjectId as string")
+    qty: int = Field(..., ge=1, description="Quantity of the product")
+
+class Order(BaseModel):
+    """Customer order associated with a pickup slot"""
+    customer_name: str = Field(...)
+    phone: str = Field(...)
+    slot_id: str = Field(..., description="Slot ObjectId as string")
+    items: List[OrderItem] = Field(..., min_items=1)
+    note: Optional[str] = Field(None)
+    total: Optional[float] = Field(None, ge=0, description="Server-computed total")
